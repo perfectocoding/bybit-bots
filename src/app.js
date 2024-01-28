@@ -27,7 +27,7 @@ class App {
         await this.bybitBot2.doSetup();
 
         this.adminBot = new AdminBot(process.env.ADMIN_BOT_USERNAME, process.env.ADMIN_BOT_TOKEN,
-            this.bybitBot1, this.bybitBot2, process.env.DOWNLOAD_FOLDER);
+            this.bybitBot1, this.bybitBot2, process.env.DOWNLOAD_FOLDER, process.env.ADMIN_BOT_IDS);
         await this.adminBot.doSetup();
 
     }

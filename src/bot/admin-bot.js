@@ -3,16 +3,19 @@ const { MESSAGES } = require('./messages');
 const { BUTTONS } = require('./buttons');
 
 module.exports = class AdminBot extends BotBase {
-    constructor(botUsername, botToken, bot1, bot2, downloadFolder) {
+    constructor(botUsername, botToken, bot1, bot2, downloadFolder, adminIds) {
         super(botUsername, botToken);
         this.bot1 = bot1;
         this.bot2 = bot2;
         this.downloadFolder = downloadFolder;
+        this.adminChatIds = adminIds.split(', ');
     }
 
     async doSetup() {
         await super.doSetup();
         await this.bot.setMyDescription({ description: MESSAGES.ADMIN_BOT.WELCOME, parse_mode: 'Markdown' })
+
+        this.log(`Указаны админы: ${this.adminChatIds}`);
 
         this.handleOnTextWithException(/\/start/, MESSAGES.ADMIN_BOT.INTRO,
             [[ { text: BUTTONS.ADMIN_BOT.PREPARE_MESSAGES.text } ]],
@@ -103,6 +106,12 @@ module.exports = class AdminBot extends BotBase {
             });
 
         this.bot.on('message', async (message) => {
+            const chatId = message.chat.id;
+            if (!this.userHasAccess(chatId)) {
+                this.log(`Пользователя с ${chatId} нет в списке, команда не будет выполнена`);
+                return;
+            }
+
             const text = message.text;
             let value = await this.db.getObjectDefault(`/actions/${message.chat.id}`, {});
             if (value?.waitingForText === false && message['media_group_id'] !== undefined
@@ -232,9 +241,18 @@ module.exports = class AdminBot extends BotBase {
         return fileIds;
     }
 
+    userHasAccess(chatId) {
+        return chatId && this.adminChatIds.includes(chatId + '');
+    }
+
     handleOnTextWithException(regexp, text, showButtons, doSomeProcessing, skipCondition) {
         this.bot.onText(regexp, async (message) => {
             const chatId = message.chat.id;
+            if (!this.userHasAccess(chatId)) {
+                this.log(`Пользователя с ${chatId} нет в списке, команда не будет выполнена`);
+                return;
+            }
+
             if (skipCondition !== undefined && await skipCondition(message) === true) {
                 this.log(`[${chatId}] не прошел по условию этап: ${regexp}`);
                 return;
